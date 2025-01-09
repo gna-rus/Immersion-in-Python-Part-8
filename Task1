@@ -1,8 +1,18 @@
+"""
+1. Напишите функцию, которая получает на вход директорию и рекурсивно обходит её и все вложенные директории.
+Результаты обхода сохраните в файлы json, csv и pickle.
+○ Для дочерних объектов указывайте родительскую директорию.
+○ Для каждого объекта укажите файл это или директория.
+○ Для файлов сохраните его размер в байтах, а для директорий размер файлов в ней с учётом всех вложенных файлов и директорий.
+2. Соберите из созданных на уроке и в рамках домашнего задания функций пакет для работы с файлами разных форматов.
+"""
+
 import os
 import json
 import csv
 from pathlib import Path
 import pickle
+import argparse
 
 
 
@@ -72,16 +82,39 @@ def save_to_pickle(data, filename):
         pickle.dump(data, f)
 
 
+# Основная программа
 if __name__ == "__main__":
-    input_directory = r'D:\GeekBrains' # Дирректория для анализа ее содержимого
+    """Код начинает работать от сюда"""
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('dir', type=str, help="Ссылка на локальную директорию") # Принимает локальную ссылку на дирректорию
+    parser.add_argument('--csv', action='store_true', help="Сохранить в csv") # Флаг на то что файл надо сохранить только в csv
+    parser.add_argument('--pkl', action='store_true', help="Сохранить в pkl") # Флаг на то что файл надо сохранить только в pkl
+    parser.add_argument('--json', action='store_true', help="Сохранить в json") # Флаг на то что файл надо сохранить только в json
+
+    # parser.add_argument('-num', '--num', type=int, default=1,
+    #                     help='Количество создаваемых файлов')
+
+    args = parser.parse_args()
+
+    # input_directory = r'D:\GeekBrains' # Дирректория для анализа ее содержимого
+    input_directory = args.dir
     output_json_file = 'output.json'
     output_csv_file = 'output.csv'
     output_pickle_file = 'output.pkl'
 
-    data = walk_directory(input_directory)
+    print(args.csv, args.pkl, args.json)
 
-    # print(data)
+    # data = walk_directory(input_directory)
 
-    # save_to_json(data, 'output.json')
-    # save_to_csv(data, 'output.csv')
-    # save_to_pickle(data, 'output.pkl')
+    if args.csv == True:
+        save_to_json(data, 'output.csv')
+    if args.pkl == True:
+        save_to_pickle(data, 'output.pkl')
+    if args.json == True:
+        save_to_json(data, 'output.json')
+    else:
+        save_to_json(data, 'output.json')
+        save_to_csv(data, 'output.csv')
+        save_to_pickle(data, 'output.pkl')
