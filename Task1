@@ -1,0 +1,74 @@
+import os
+import json
+import csv
+from pathlib import Path
+import pickle
+
+
+def walk_directory(directory, parent=None) -> list:
+    """Функция для обхода содержимого дирректории и анализа результата поиска"""
+    result = [] # Создаю список для словарей
+
+    # Получаем содержимое текущей директории
+    items = os.listdir(directory)
+
+    for item in items:
+        # обхожу содержимое дирректории
+        full_path = os.path.join(directory, item) # путь до файла\дирректории
+
+        if os.path.isdir(full_path):  # если это директория
+            entry = {
+                'type': 'directory',
+                'name': item, # название файла\дирректории
+                'path': full_path, #полный путь до дирректории
+                'parent': Path(directory).name # Определяю родительскую дирректорию. Если это дочерняя дирректория то она будет соотвествтовать 'name' родетесльской
+            }
+            result.append(entry)
+
+            # Рекурсивный вызов для обработки вложенных директорий
+            sub_result = walk_directory(full_path, entry['name'])
+            result.extend(sub_result)
+        else:  # Если это файл
+            entry = {
+                'type': 'file',
+                'name': item,
+                'path': full_path,
+                'parent': Path(directory).name
+            }
+            result.append(entry)
+
+    return result
+
+
+def save_to_json(data, filename):
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+
+def save_to_csv(data, filename):
+    fieldnames = ['type', 'name', 'path', 'parent']
+
+    with open(filename, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+
+
+def save_to_pickle(data, filename):
+    with open(filename, 'wb') as f:
+        pickle.dump(data, f)
+
+
+if __name__ == "__main__":
+    input_directory = r'D:\GeekBrains' # Дирректория для анализа ее содержимого
+    output_json_file = 'output.json'
+    output_csv_file = 'output.csv'
+    output_pickle_file = 'output.pkl'
+
+    data = walk_directory(input_directory)
+
+    print(data)
+
+    # save_to_json(data, 'output.json')
+    # save_to_csv(data, 'output.csv')
+    # save_to_pickle(data, 'output.pkl')
