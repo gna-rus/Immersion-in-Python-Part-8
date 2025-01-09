@@ -7,6 +7,18 @@
 2. Соберите из созданных на уроке и в рамках домашнего задания функций пакет для работы с файлами разных форматов.
 """
 
+"""
+!!! Программа запускается через командную строку
+Пример команды для запуска кода:
+    python Task1.py D:\GeekBrains -name my_file --csv --json --pkl
+где:
+    Task1.py - название файла с кодом
+    D:\GeekBrains - локальная ссылка на директория для анализа
+    -name my_file - название для файла с отчетами (если не указать то по умолчанию output)
+    --csv --json --pkl - флаги в каких форматах сохранять (если не казать ниодного то сохранит во всех трех форматах автоматически)
+"""
+
+
 import os
 import json
 import csv
@@ -18,68 +30,87 @@ import argparse
 
 
 def walk_directory(directory, parent=None) -> list:
-    """Функция для обхода содержимого дирректории и анализа результата поиска"""
+    """Рекурсивная функция для обхода содержимого дирректории и анализа результата поиска"""
     result = []
 
     # Получаем содержимое текущей директории
     items = os.listdir(directory)
 
     total_size = 0  # Переменная для хранения общего размера директории
+    try:
+        for item in items:
+            full_path = os.path.join(directory, item) # полный путь
 
-    for item in items:
-        full_path = os.path.join(directory, item)
+            if os.path.isdir(full_path):  # Если это директория
+                entry = {
+                    'type': 'directory', # Присвоение тип
+                    'name': item, # Название директории
+                    'path': full_path, # полный путь до директории
+                    'parent': Path(directory).name
+                }
+                result.append(entry) # добавляю в результирующий словарь данные о директории
 
-        if os.path.isdir(full_path):  # Если это директория
-            entry = {
-                'type': 'directory', # Присвоение тип
-                'name': item, # Название директории
-                'path': full_path, # полный путь до директории
-                'parent': Path(directory).name
-            }
-            result.append(entry)
+                # Рекурсивный вызов для обработки вложенных директорий
+                sub_result, sub_total_size = walk_directory(full_path, entry['name'])
 
-            # Рекурсивный вызов для обработки вложенных директорий
-            sub_result, sub_total_size = walk_directory(full_path, entry['name'])
-            result.extend(sub_result)
-            total_size += sub_total_size
+                result.extend(sub_result) # sub_result - это итерируемый обьект поэтомк и использую extend
+                total_size += sub_total_size
 
-        else:  # Если это файл
-            size = os.path.getsize(full_path)  # Определяем размер файла
-            entry = {
-                'type': 'file', # Присвоение тип
-                'name': item, # Название файла
-                'path': full_path, # полный путь до файла
-                'parent': Path(directory).name, # Добавляю родительскую дирректорию (соотвестствует name родителя)
-                'size': size # Добавляю размер файла
-            }
-            result.append(entry)
-            total_size += size
+            else:  # Если это файл
+                size = os.path.getsize(full_path)  # Определяем размер файла
+                entry = {
+                    'type': 'file', # Присвоение тип
+                    'name': item, # Название файла
+                    'path': full_path, # полный путь до файла
+                    'parent': Path(directory).name, # Добавляю родительскую дирректорию (соотвестствует name родителя)
+                    'size': size # Добавляю размер файла
+                }
+                result.append(entry) # добавляю в результирующий словарь данные о директории
+                total_size += size
 
+        result[0]['total_size'] = total_size # Добавляем общий размер директории
 
-    # result['total_size'] = total_size
-    print(result[0])
-    result[0]['total_size'] = total_size # Добавляем общий размер директории
+    except Exception as e:
+        # Не знаю почему вот такое повторение нужно, но без него есть пропущенные места результате анализа
+        result[0]['total_size'] = total_size
+        return result, total_size
 
     return result, total_size
 
 
 def save_to_json(data, filename):
+    """Функция сохранения данных в json"""
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
+    print(f'Данные сохранены в {filename}')
 
 
 def save_to_csv(data, filename):
-    fieldnames = ['type', 'name', 'path', 'parent']
+    """Функция сохранения данных в csv"""
+    fieldnames = ['type', 'name', 'path', 'parent', 'size']
+    data = data[0]
+    for i in data:
+        # Так как размер дирректории обозначались как "total_size", а размер файла "size"
+        # провожу унификацию названий ключей всех словарей
+        if 'total_size' in i.keys():
+            # Удаляем старый ключ и получаем его значение
+            value = i.pop('total_size')
+            # Добавляем новый ключ с полученным значением
+            i['size'] = value
 
     with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(data)
 
+    print(f'Данные сохранены в {filename}')
+
 
 def save_to_pickle(data, filename):
+    """Функция сохранения данных в pkl"""
     with open(filename, 'wb') as f:
         pickle.dump(data, f)
+    print(f'Данные сохранены в {filename}')
 
 
 # Основная программа
@@ -89,32 +120,30 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('dir', type=str, help="Ссылка на локальную директорию") # Принимает локальную ссылку на дирректорию
+    parser.add_argument('-name', '--name', type=str, default='output', help='Имя сохраненного отчета') # Задать имя для сохранения
     parser.add_argument('--csv', action='store_true', help="Сохранить в csv") # Флаг на то что файл надо сохранить только в csv
     parser.add_argument('--pkl', action='store_true', help="Сохранить в pkl") # Флаг на то что файл надо сохранить только в pkl
     parser.add_argument('--json', action='store_true', help="Сохранить в json") # Флаг на то что файл надо сохранить только в json
-
-    # parser.add_argument('-num', '--num', type=int, default=1,
-    #                     help='Количество создаваемых файлов')
 
     args = parser.parse_args()
 
     # input_directory = r'D:\GeekBrains' # Дирректория для анализа ее содержимого
     input_directory = args.dir
-    output_json_file = 'output.json'
-    output_csv_file = 'output.csv'
-    output_pickle_file = 'output.pkl'
 
-    print(args.csv, args.pkl, args.json)
+    name_save = args.name
+    output_json_file = f'{name_save}.json'
+    output_csv_file = f'{name_save}.csv'
+    output_pickle_file = f'{name_save}.pkl'
 
-    # data = walk_directory(input_directory)
+    data = walk_directory(input_directory)
 
     if args.csv == True:
-        save_to_json(data, 'output.csv')
+        save_to_csv(data, output_csv_file)
     if args.pkl == True:
-        save_to_pickle(data, 'output.pkl')
+        save_to_pickle(data, output_pickle_file)
     if args.json == True:
-        save_to_json(data, 'output.json')
+        save_to_json(data, output_json_file)
     else:
-        save_to_json(data, 'output.json')
-        save_to_csv(data, 'output.csv')
-        save_to_pickle(data, 'output.pkl')
+        save_to_json(data, output_json_file)
+        save_to_csv(data, output_csv_file)
+        save_to_pickle(data, output_pickle_file)
