@@ -5,39 +5,52 @@ from pathlib import Path
 import pickle
 
 
+
+
 def walk_directory(directory, parent=None) -> list:
     """Функция для обхода содержимого дирректории и анализа результата поиска"""
-    result = [] # Создаю список для словарей
+    result = []
 
     # Получаем содержимое текущей директории
     items = os.listdir(directory)
 
+    total_size = 0  # Переменная для хранения общего размера директории
+
     for item in items:
-        # обхожу содержимое дирректории
-        full_path = os.path.join(directory, item) # путь до файла\дирректории
+        full_path = os.path.join(directory, item)
 
-        if os.path.isdir(full_path):  # если это директория
+        if os.path.isdir(full_path):  # Если это директория
             entry = {
-                'type': 'directory',
-                'name': item, # название файла\дирректории
-                'path': full_path, #полный путь до дирректории
-                'parent': Path(directory).name # Определяю родительскую дирректорию. Если это дочерняя дирректория то она будет соотвествтовать 'name' родетесльской
-            }
-            result.append(entry)
-
-            # Рекурсивный вызов для обработки вложенных директорий
-            sub_result = walk_directory(full_path, entry['name'])
-            result.extend(sub_result)
-        else:  # Если это файл
-            entry = {
-                'type': 'file',
-                'name': item,
-                'path': full_path,
+                'type': 'directory', # Присвоение тип
+                'name': item, # Название директории
+                'path': full_path, # полный путь до директории
                 'parent': Path(directory).name
             }
             result.append(entry)
 
-    return result
+            # Рекурсивный вызов для обработки вложенных директорий
+            sub_result, sub_total_size = walk_directory(full_path, entry['name'])
+            result.extend(sub_result)
+            total_size += sub_total_size
+
+        else:  # Если это файл
+            size = os.path.getsize(full_path)  # Определяем размер файла
+            entry = {
+                'type': 'file', # Присвоение тип
+                'name': item, # Название файла
+                'path': full_path, # полный путь до файла
+                'parent': Path(directory).name, # Добавляю родительскую дирректорию (соотвестствует name родителя)
+                'size': size # Добавляю размер файла
+            }
+            result.append(entry)
+            total_size += size
+
+
+    # result['total_size'] = total_size
+    print(result[0])
+    result[0]['total_size'] = total_size # Добавляем общий размер директории
+
+    return result, total_size
 
 
 def save_to_json(data, filename):
@@ -67,7 +80,7 @@ if __name__ == "__main__":
 
     data = walk_directory(input_directory)
 
-    print(data)
+    # print(data)
 
     # save_to_json(data, 'output.json')
     # save_to_csv(data, 'output.csv')
